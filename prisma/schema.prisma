@@ -1,0 +1,138 @@
+// This is your Prisma schema file
+// Okul Sosyal Platform Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Model - Firebase Auth ile senkronize
+model User {
+  id        String   @id @default(uuid())
+  uid       String   @unique // Firebase UID
+  email     String   @unique
+  name      String
+  photoURL  String?
+  
+  // Öğrenci bilgileri
+  department   String
+  classLevel   Int
+  studentNo    String?  @unique
+  
+  // İlişkiler
+  groupId      String?
+  group        Group?   @relation(fields: [groupId], references: [id])
+  messages     Message[]
+  files        File[]
+  statuses     Status[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([groupId])
+  @@index([uid])
+  @@map("users")
+}
+
+// Group Model - Bölüm + Sınıf bazında gruplar
+model Group {
+  id          String   @id @default(uuid())
+  department  String   // "Bilgisayar Mühendisliği"
+  classLevel  Int      // 1, 2, 3, 4
+  
+  // İlişkiler
+  members     User[]
+  messages    Message[]
+  files       File[]
+  statuses    Status[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Department + classLevel birlikte unique olmalı
+  @@unique([department, classLevel])
+  @@index([department])
+  @@index([classLevel])
+  @@map("groups")
+}
+
+// Message Model - Chat mesajları
+model Message {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  
+  // İlişkiler
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  // Hızlı sorgulama için index (son mesajlar)
+  @@index([groupId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("messages")
+}
+
+// File Model - Müzik, Not, Döküman paylaşımı
+model File {
+  id          String   @id @default(uuid())
+  fileName    String
+  fileType    FileType // music, note, image, document
+  fileUrl     String   // Cloudflare R2 URL
+  fileSize    Int      // bytes
+  mimeType    String
+  
+  // Metadata (müzik için)
+  musicTitle  String?  // Spotify/YouTube başlığı
+  musicUrl    String?  // Original link
+  
+  // Beğeni sistemi
+  likes       Int      @default(0)
+  
+  // İlişkiler
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  groupId     String
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // FileType'a göre sıralama ve gruplama için index
+  @@index([groupId, fileType, createdAt(sort: Desc)])
+  @@index([groupId, likes(sort: Desc)]) // En beğenilenler için
+  @@index([userId])
+  @@map("files")
+}
+
+// Status Model - Kısa süreli (24 sa) durum paylaşımları
+model Status {
+  id              String   @id @default(uuid())
+  text            String?
+  music           Json?    // { title, artist, coverUrl, previewUrl }
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  groupId         String
+  group           Group    @relation(fields: [groupId], references: [id])
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+
+  @@index([groupId, createdAt(sort: Desc)])
+  @@map("statuses")
+}
+
+// File Type Enum
+enum FileType {
+  MUSIC
+  NOTE
+  IMAGE
+  DOCUMENT
+}
