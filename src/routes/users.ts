@@ -88,7 +88,7 @@ router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
 });
 
 // PUT /api/users/program - Update university program info
-router.put("/program", async (req: any, res) => {
+router.put("/program", async (req: any, res): Promise<any> => {
   try {
     const userId = req.user.uid;
     const { id, name, facultyId, facultyName } = req.body;
@@ -110,7 +110,7 @@ router.put("/program", async (req: any, res) => {
       },
     });
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error("Error saving program info:", error);
     res.status(500).json({ error: "Internal server error" });

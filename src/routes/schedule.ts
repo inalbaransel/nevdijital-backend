@@ -18,7 +18,7 @@ const courseSchema = z.object({
 const batchCourseSchema = z.array(courseSchema);
 
 // GET /api/schedule - Get user's schedule
-router.get("/", async (req: any, res) => {
+router.get("/", async (req: any, res): Promise<any> => {
   try {
     const userId = req.user.uid; // Firebase UID from middleware
 
@@ -36,7 +36,7 @@ router.get("/", async (req: any, res) => {
       orderBy: { startTime: "asc" },
     });
 
-    res.json(courses);
+    return res.json(courses);
   } catch (error) {
     console.error("Error fetching schedule:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -44,7 +44,7 @@ router.get("/", async (req: any, res) => {
 });
 
 // POST /api/schedule - Add a course
-router.post("/", async (req: any, res) => {
+router.post("/", async (req: any, res): Promise<any> => {
   try {
     const userId = req.user.uid;
     const data = courseSchema.parse(req.body);
@@ -64,7 +64,7 @@ router.post("/", async (req: any, res) => {
       },
     });
 
-    res.json(course);
+    return res.json(course);
   } catch (error) {
     console.error("Error adding course:", error);
     res.status(400).json({ error: "Invalid data" });
@@ -72,7 +72,7 @@ router.post("/", async (req: any, res) => {
 });
 
 // POST /api/schedule/batch - Batch add courses (for sync/migration)
-router.post("/batch", async (req: any, res) => {
+router.post("/batch", async (req: any, res): Promise<any> => {
   try {
     const userId = req.user.uid;
     const coursesData = batchCourseSchema.parse(req.body.courses);
@@ -104,7 +104,7 @@ router.post("/batch", async (req: any, res) => {
       }
     });
 
-    res.json({ success: true, count: coursesData.length });
+    return res.json({ success: true, count: coursesData.length });
   } catch (error) {
     console.error("Error batch adding courses:", error);
     res.status(400).json({ error: "Invalid data or server error" });
@@ -112,7 +112,7 @@ router.post("/batch", async (req: any, res) => {
 });
 
 // DELETE /api/schedule/:id - Delete a course
-router.delete("/:id", async (req: any, res) => {
+router.delete("/:id", async (req: any, res): Promise<any> => {
   try {
     const userId = req.user.uid;
     const { id } = req.params;
@@ -138,7 +138,7 @@ router.delete("/:id", async (req: any, res) => {
       where: { id },
     });
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error("Error deleting course:", error);
     res.status(500).json({ error: "Internal server error" });
