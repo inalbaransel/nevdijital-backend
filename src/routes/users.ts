@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 router.post("/", async (req: Request, res: Response): Promise<any> => {
   const { uid, email, name, photoURL, department, classLevel, studentNo } =
     req.body;
+  // Force redeploy fix
   let group: any;
 
   try {
