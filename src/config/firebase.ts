@@ -14,7 +14,23 @@ export function initializeFirebaseAdmin(): admin.app.App {
     // Parse private key (handle escaped newlines and potential quotes/prefix)
     let privateKey = (process.env.FIREBASE_PRIVATE_KEY || "").trim();
 
-    // Clean up key (remove prefix if accidentally added, remove quotes, fix newlines)
+    // 1. Check if it's Base64 encoded (The safest way for Coolify/Docker)
+    if (
+      privateKey &&
+      !privateKey.startsWith("---") &&
+      !privateKey.startsWith('"---')
+    ) {
+      try {
+        const decoded = Buffer.from(privateKey, "base64").toString("utf8");
+        if (decoded.includes("---BEGIN PRIVATE KEY---")) {
+          privateKey = decoded;
+        }
+      } catch (e) {
+        // Not base64
+      }
+    }
+
+    // 2. Clean up key (remove prefix if accidentally added, remove quotes, fix newlines)
     if (privateKey.includes("FIREBASE_PRIVATE_KEY=")) {
       privateKey = privateKey.split("FIREBASE_PRIVATE_KEY=")[1];
     }
