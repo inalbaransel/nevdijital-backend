@@ -5,7 +5,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/groups - Tüm grupları listele
-router.get("/", async (req: Request, res: Response): Promise<any> => {
+router.get("/", async (_req: Request, res: Response): Promise<any> => {
   try {
     const groups = await prisma.group.findMany({
       orderBy: [{ department: "asc" }, { classLevel: "asc" }],
