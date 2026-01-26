@@ -15,7 +15,9 @@ const prisma = new PrismaClient();
 
 // Socket.io setup with CORS
 const isDev = process.env.NODE_ENV === "development";
-const allowedOrigins = [process.env.FRONTEND_URL || "http://localhost:3000"];
+const allowedOrigins = (
+  process.env.FRONTEND_URL || "http://localhost:3000"
+).split(",");
 
 const io = new Server(httpServer, {
   cors: {
