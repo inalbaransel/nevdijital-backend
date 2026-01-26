@@ -55,6 +55,44 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
 
     return res.status(200).json({ user, group });
   } catch (error: any) {
+    // Handle Unique Constraint Violation for studentNo (P2002)
+    if (error.code === "P2002" && error.meta?.target?.includes("studentNo")) {
+      console.warn(
+        "⚠️ Duplicate studentNo detected. Retrying with null studentNo...",
+      );
+      try {
+        const user = await prisma.user.upsert({
+          where: { uid: uid as string },
+          update: {
+            // ... restart update without studentNo
+            email: email as string,
+            name: name as string,
+            photoURL: (photoURL as string) || null,
+            department: department as string,
+            classLevel: parseInt(classLevel as string),
+            studentNo: null, // Clear collision
+            groupId: group.id,
+          },
+          create: {
+            uid: uid as string,
+            email: email as string,
+            name: name as string,
+            photoURL: (photoURL as string) || null,
+            department: department as string,
+            classLevel: parseInt(classLevel as string),
+            studentNo: null, // Clear collision
+            groupId: group.id,
+          },
+        });
+        return res.status(200).json({ user, group });
+      } catch (retryError) {
+        console.error("Retry failed:", retryError);
+        return res
+          .status(500)
+          .json({ error: "Failed to sync user (retry)", details: retryError });
+      }
+    }
+
     console.error("Error syncing user:", error);
     return res
       .status(500)
