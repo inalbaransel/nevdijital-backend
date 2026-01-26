@@ -12,16 +12,17 @@ export function initializeFirebaseAdmin(): admin.app.App {
 
   try {
     // Parse private key (handle escaped newlines and potential quotes/prefix)
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY || "";
+    let privateKey = (process.env.FIREBASE_PRIVATE_KEY || "").trim();
 
     // Clean up key (remove prefix if accidentally added, remove quotes, fix newlines)
-    if (privateKey.startsWith("FIREBASE_PRIVATE_KEY=")) {
-      privateKey = privateKey.replace("FIREBASE_PRIVATE_KEY=", "");
+    if (privateKey.includes("FIREBASE_PRIVATE_KEY=")) {
+      privateKey = privateKey.split("FIREBASE_PRIVATE_KEY=")[1];
     }
 
     privateKey = privateKey
-      .replace(/^"|"$/g, "") // Baştaki ve sondaki tırnakları sil
-      .replace(/\\n/g, "\n") // \\n'leri gerçek alt satıra çevir
+      .replace(/^["']|["']$/g, "") // Baştaki ve sondaki tırnakları sil
+      .split("\\n")
+      .join("\n") // \n yazılarını GERÇEK alt satıra çevir
       .trim(); // Gereksiz boşlukları temizle
 
     if (
