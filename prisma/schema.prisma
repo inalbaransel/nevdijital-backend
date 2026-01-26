@@ -23,6 +23,7 @@ model User {
   department   String
   classLevel   Int
   studentNo    String?  @unique
+  universityProgram Json? // { id, name, facultyId, facultyName }
   
   // İlişkiler
   groupId      String?
@@ -30,6 +31,7 @@ model User {
   messages     Message[]
   files        File[]
   statuses     Status[]
+  courses      Course[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -136,4 +138,25 @@ enum FileType {
   NOTE
   IMAGE
   DOCUMENT
+}
+
+// Course Model - Haftalık Ders Programı
+model Course {
+  id          String   @id @default(uuid())
+  name        String
+  day         String   // "monday", "tuesday", etc.
+  startTime   String   // "09:00"
+  endTime     String   // "10:30"
+  classroom   String?  // "D-102"
+  color       String?  // UI color code
+  
+  // Relation to User
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("courses")
 }

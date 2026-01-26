@@ -87,4 +87,34 @@ router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
+// PUT /api/users/program - Update university program info
+router.put("/program", async (req: any, res) => {
+  try {
+    const userId = req.user.uid;
+    const { id, name, facultyId, facultyName } = req.body;
+
+    if (!id || !name || !facultyId || !facultyName) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    await prisma.user.update({
+      where: { uid: userId },
+      data: {
+        universityProgram: {
+          id,
+          name,
+          facultyId,
+          facultyName,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error saving program info:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

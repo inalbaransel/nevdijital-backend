@@ -53,6 +53,7 @@ import usersRouter from "./routes/users";
 import filesRouter from "./routes/files";
 import uploadRouter from "./routes/upload";
 import statusesRouter from "./routes/statuses";
+import scheduleRouter from "./routes/schedule";
 
 // Apply rate limiting to all API routes
 app.use("/api", apiRateLimiter);
@@ -73,6 +74,7 @@ app.use("/api/users", authenticateToken, usersRouter);
 app.use("/api/files", authenticateToken, filesRouter);
 app.use("/api/upload", authenticateToken, uploadRateLimiter, uploadRouter);
 app.use("/api/statuses", authenticateToken, statusesRouter);
+app.use("/api/schedule", authenticateToken, scheduleRouter);
 
 // Socket.io Authentication Middleware
 import admin from "./config/firebase";
