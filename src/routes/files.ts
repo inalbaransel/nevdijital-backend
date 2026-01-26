@@ -6,7 +6,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/files/:groupId - Bir grubun dosyalarını getir
-router.get("/:groupId", async (req: Request, res: Response) => {
+router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
   try {
     const { groupId } = req.params;
     const {
@@ -18,7 +18,7 @@ router.get("/:groupId", async (req: Request, res: Response) => {
 
     // Validate group
     const group = await prisma.group.findUnique({
-      where: { id: groupId },
+      where: { id: groupId as string },
     });
 
     if (!group) {
@@ -26,9 +26,9 @@ router.get("/:groupId", async (req: Request, res: Response) => {
     }
 
     // Build where clause
-    const where: any = { groupId };
+    const where: any = { groupId: groupId as string };
     if (fileType) {
-      where.fileType = fileType;
+      where.fileType = fileType as string;
     }
 
     // Build orderBy
@@ -57,7 +57,7 @@ router.get("/:groupId", async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       files,
       total: await prisma.file.count({ where }),
       limit: parseInt(limit as string),
@@ -65,40 +65,43 @@ router.get("/:groupId", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching files:", error);
-    res.status(500).json({ error: "Failed to fetch files" });
+    return res.status(500).json({ error: "Failed to fetch files" });
   }
 });
 
 // POST /api/files/:fileId/like - Dosyayı beğen
-router.post("/:fileId/like", async (req: Request, res: Response) => {
-  try {
-    const { fileId } = req.params;
+router.post(
+  "/:fileId/like",
+  async (req: Request, res: Response): Promise<any> => {
+    try {
+      const { fileId } = req.params;
 
-    const file = await prisma.file.update({
-      where: { id: fileId },
-      data: {
-        likes: {
-          increment: 1,
+      const file = await prisma.file.update({
+        where: { id: fileId as string },
+        data: {
+          likes: {
+            increment: 1,
+          },
         },
-      },
-    });
+      });
 
-    res.json(file);
-  } catch (error) {
-    console.error("Error liking file:", error);
-    res.status(500).json({ error: "Failed to like file" });
-  }
-});
+      return res.json(file);
+    } catch (error) {
+      console.error("Error liking file:", error);
+      return res.status(500).json({ error: "Failed to like file" });
+    }
+  },
+);
 
 // DELETE /api/files/:fileId - Dosyayı sil
-router.delete("/:fileId", async (req: Request, res: Response) => {
+router.delete("/:fileId", async (req: Request, res: Response): Promise<any> => {
   try {
     const { fileId } = req.params;
     const { userId } = req.body;
 
     // Verify ownership
     const file = await prisma.file.findUnique({
-      where: { id: fileId },
+      where: { id: fileId as string },
     });
 
     if (!file) {
@@ -124,13 +127,13 @@ router.delete("/:fileId", async (req: Request, res: Response) => {
 
     // 2. Delete from database
     await prisma.file.delete({
-      where: { id: fileId },
+      where: { id: fileId as string },
     });
 
-    res.json({ message: "File deleted successfully" });
+    return res.json({ message: "File deleted successfully" });
   } catch (error) {
     console.error("Error deleting file:", error);
-    res.status(500).json({ error: "Failed to delete file" });
+    return res.status(500).json({ error: "Failed to delete file" });
   }
 });
 

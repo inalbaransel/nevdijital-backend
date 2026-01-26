@@ -5,14 +5,14 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/messages/:groupId - Bir grubun mesajlarını getir
-router.get("/:groupId", async (req: Request, res: Response) => {
+router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
   try {
     const { groupId } = req.params;
     const { limit = "50", offset = "0" } = req.query;
 
     // Validate groupId
     const group = await prisma.group.findUnique({
-      where: { id: groupId },
+      where: { id: groupId as string },
     });
 
     if (!group) {
@@ -21,7 +21,7 @@ router.get("/:groupId", async (req: Request, res: Response) => {
 
     // Fetch messages with pagination
     const messages = await prisma.message.findMany({
-      where: { groupId },
+      where: { groupId: groupId as string },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
       orderBy: { createdAt: "desc" },
@@ -40,20 +40,22 @@ router.get("/:groupId", async (req: Request, res: Response) => {
     // Reverse to show oldest first
     const messagesReversed = messages.reverse();
 
-    res.json({
+    return res.json({
       messages: messagesReversed,
-      total: await prisma.message.count({ where: { groupId } }),
+      total: await prisma.message.count({
+        where: { groupId: groupId as string },
+      }),
       limit: parseInt(limit as string),
       offset: parseInt(offset as string),
     });
   } catch (error) {
     console.error("Error fetching messages:", error);
-    res.status(500).json({ error: "Failed to fetch messages" });
+    return res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
 
 // POST /api/messages - Mesaj gönder (REST API alternatifi, Socket.io tercih edilir)
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const { text, userId, groupId } = req.body;
 
@@ -62,7 +64,11 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const message = await prisma.message.create({
-      data: { text, userId, groupId },
+      data: {
+        text: text as string,
+        userId: userId as string,
+        groupId: groupId as string,
+      },
       include: {
         user: {
           select: {
@@ -75,10 +81,10 @@ router.post("/", async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(message);
+    return res.status(201).json(message);
   } catch (error) {
     console.error("Error creating message:", error);
-    res.status(500).json({ error: "Failed to create message" });
+    return res.status(500).json({ error: "Failed to create message" });
   }
 });
 

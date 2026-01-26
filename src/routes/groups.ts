@@ -5,7 +5,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/groups - Tüm grupları listele
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const groups = await prisma.group.findMany({
       orderBy: [{ department: "asc" }, { classLevel: "asc" }],
@@ -19,20 +19,20 @@ router.get("/", async (req: Request, res: Response) => {
       },
     });
 
-    res.json(groups);
+    return res.json(groups);
   } catch (error) {
     console.error("Error fetching groups:", error);
-    res.status(500).json({ error: "Failed to fetch groups" });
+    return res.status(500).json({ error: "Failed to fetch groups" });
   }
 });
 
 // GET /api/groups/:id - Belirli bir grubu getir
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
     const group = await prisma.group.findUnique({
-      where: { id },
+      where: { id: id as string },
       include: {
         members: {
           select: {
@@ -56,15 +56,15 @@ router.get("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Group not found" });
     }
 
-    res.json(group);
+    return res.json(group);
   } catch (error) {
     console.error("Error fetching group:", error);
-    res.status(500).json({ error: "Failed to fetch group" });
+    return res.status(500).json({ error: "Failed to fetch group" });
   }
 });
 
 // POST /api/groups - Yeni grup oluştur
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const { department, classLevel } = req.body;
 
@@ -76,8 +76,8 @@ router.post("/", async (req: Request, res: Response) => {
     const existingGroup = await prisma.group.findUnique({
       where: {
         department_classLevel: {
-          department,
-          classLevel: parseInt(classLevel),
+          department: department as string,
+          classLevel: parseInt(classLevel as string),
         },
       },
     });
@@ -90,15 +90,15 @@ router.post("/", async (req: Request, res: Response) => {
 
     const group = await prisma.group.create({
       data: {
-        department,
-        classLevel: parseInt(classLevel),
+        department: department as string,
+        classLevel: parseInt(classLevel as string),
       },
     });
 
-    res.status(201).json(group);
+    return res.status(201).json(group);
   } catch (error) {
     console.error("Error creating group:", error);
-    res.status(500).json({ error: "Failed to create group" });
+    return res.status(500).json({ error: "Failed to create group" });
   }
 });
 
