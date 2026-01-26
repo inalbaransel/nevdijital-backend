@@ -15,23 +15,19 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     }
 
     // Find or create group for this department + classLevel
-    let group = await prisma.group.findUnique({
+    const group = await prisma.group.upsert({
       where: {
         department_classLevel: {
           department: department as string,
           classLevel: parseInt(classLevel as string),
         },
       },
+      update: {},
+      create: {
+        department: department as string,
+        classLevel: parseInt(classLevel as string),
+      },
     });
-
-    if (!group) {
-      group = await prisma.group.create({
-        data: {
-          department: department as string,
-          classLevel: parseInt(classLevel as string),
-        },
-      });
-    }
 
     // Upsert user (create or update)
     const user = await prisma.user.upsert({
@@ -58,9 +54,11 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     });
 
     return res.status(200).json({ user, group });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error syncing user:", error);
-    return res.status(500).json({ error: "Failed to sync user" });
+    return res
+      .status(500)
+      .json({ error: "Failed to sync user", details: error.message });
   }
 });
 
