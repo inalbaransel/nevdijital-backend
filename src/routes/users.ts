@@ -6,16 +6,17 @@ const prisma = new PrismaClient();
 
 // POST /api/users - Firebase user sync (create or update)
 router.post("/", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { uid, email, name, photoURL, department, classLevel, studentNo } =
-      req.body;
+  const { uid, email, name, photoURL, department, classLevel, studentNo } =
+    req.body;
+  let group: any;
 
+  try {
     if (!uid || !email || !name || !department || !classLevel) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     // Find or create group for this department + classLevel
-    const group = await prisma.group.upsert({
+    group = await prisma.group.upsert({
       where: {
         department_classLevel: {
           department: department as string,
@@ -61,6 +62,10 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         "⚠️ Duplicate studentNo detected. Retrying with null studentNo...",
       );
       try {
+        if (!group) {
+          throw new Error("Group creation failed before user upsert");
+        }
+
         const user = await prisma.user.upsert({
           where: { uid: uid as string },
           update: {
