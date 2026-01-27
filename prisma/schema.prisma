@@ -37,6 +37,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  // Presence
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  
   @@index([groupId])
   @@index([uid])
   @@map("users")

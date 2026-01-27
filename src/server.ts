@@ -105,11 +105,35 @@ io.use(async (socket, next) => {
 });
 
 // Socket.io Events
-io.on("connection", (socket) => {
+// Socket.io Events
+io.on("connection", async (socket) => {
   const user = socket.data.user;
   console.log(`✅ User connected: ${socket.id} (${user?.email})`);
 
-  // Join a group chat room
+  // SET ONLINE STATUS
+  if (user?.uid) {
+    try {
+      // 1. Update DB -> Online
+      const dbUser = await prisma.user.update({
+        where: { uid: user.uid },
+        data: { isOnline: true },
+        select: { id: true, groupId: true },
+      });
+
+      // 2. Broadcast to their group if they have one
+      if (dbUser.groupId) {
+        socket.join(dbUser.groupId); // Auto-join room based on DB
+        io.to(dbUser.groupId).emit("user_status_change", {
+          userId: dbUser.id,
+          isOnline: true,
+        });
+      }
+    } catch (err) {
+      console.error("Error setting user online:", err);
+    }
+  }
+
+  // Join a group chat room (Explicit join)
   socket.on("join_group", async (groupId: string) => {
     try {
       // Validate group exists
@@ -188,8 +212,32 @@ io.on("connection", (socket) => {
   });
 
   // Disconnect
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log(`❌ User disconnected: ${socket.id}`);
+    if (user?.uid) {
+      try {
+        // 1. Update DB -> Offline & LastSeen
+        const dbUser = await prisma.user.update({
+          where: { uid: user.uid },
+          data: {
+            isOnline: false,
+            lastSeen: new Date(),
+          },
+          select: { id: true, groupId: true },
+        });
+
+        // 2. Broadcast (Offline)
+        if (dbUser.groupId) {
+          io.to(dbUser.groupId).emit("user_status_change", {
+            userId: dbUser.id,
+            isOnline: false,
+            lastSeen: new Date(),
+          });
+        }
+      } catch (err) {
+        console.error("Error setting user offline:", err);
+      }
+    }
   });
 });
 

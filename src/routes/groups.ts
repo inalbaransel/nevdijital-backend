@@ -41,6 +41,8 @@ router.get("/:id", async (req: Request, res: Response): Promise<any> => {
             name: true,
             photoURL: true,
             studentNo: true,
+            isOnline: true,
+            lastSeen: true,
           },
         },
         _count: {
