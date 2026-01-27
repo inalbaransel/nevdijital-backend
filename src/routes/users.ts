@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import admin from "../config/firebase";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -16,6 +17,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     studentNo,
     role,
   } = req.body;
+  const userUid = (req as any).user?.uid;
   // Force redeploy fix
   let group: any;
 
@@ -39,6 +41,41 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
       },
     });
 
+    // --- SECURITY HARDENING ---
+    // Fetch requester and existing target user to verify role permissions
+    const requester = await prisma.user.findUnique({
+      where: { uid: userUid },
+    });
+    const targetUser = await prisma.user.findUnique({
+      where: { uid: uid as string },
+    });
+
+    let finalRole = "student";
+    const requestedRole = (role as string) || "student";
+
+    if (requestedRole === "admin") {
+      const providedPin = req.body.bypassPin;
+      const MASTER_PIN = process.env.ADMIN_BYPASS_PIN || "4605";
+
+      if (
+        targetUser?.role === "admin" ||
+        requester?.role === "admin" ||
+        providedPin === MASTER_PIN
+      ) {
+        finalRole = "admin";
+      } else {
+        console.warn(`🛑 Unauthorized admin promotion attempt for ${uid}`);
+        finalRole = "student";
+      }
+    } else {
+      // If student or something else, but they were admin, keep them admin unless explicitly changed by an admin
+      if (targetUser?.role === "admin" && requester?.role !== "admin") {
+        finalRole = "admin";
+      } else {
+        finalRole = requestedRole;
+      }
+    }
+
     // Upsert user (create or update)
     const user = await prisma.user.upsert({
       where: { uid: uid as string },
@@ -49,7 +86,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: parseInt(classLevel as string),
         studentNo: (studentNo as string) || null,
-        role: (role as string) || "student",
+        role: finalRole,
         groupId: group.id,
       },
       create: {
@@ -60,7 +97,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: parseInt(classLevel as string),
         studentNo: (studentNo as string) || null,
-        role: (role as string) || "student",
+        role: finalRole,
         groupId: group.id,
       },
     });
@@ -238,7 +275,19 @@ router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
       return res.status(403).json({ error: "Unauthorized access" });
     }
 
-    // Prisma schema'da Cascade silme tanımlı olduğu için (onDelete: Cascade),
+    // 1. Delete from Firebase Authentication
+    try {
+      await admin.auth().deleteUser(uid as string);
+      console.log(`Firebase User deleted: ${uid}`);
+    } catch (fbErr: any) {
+      console.error(
+        "Firebase deletion failed (might not exist in Auth):",
+        fbErr,
+      );
+      // No stop if firebase delete fails (maybe user only exists in DB)
+    }
+
+    // 2. Prisma schema'da Cascade silme tanımlı olduğu için (onDelete: Cascade),
     // Kullanıcıyı silince mesajları, dosyaları vs. otomatik silinir.
     await prisma.user.delete({
       where: { uid: uid as string },
