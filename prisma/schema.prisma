@@ -23,6 +23,7 @@ model User {
   department   String
   classLevel   Int
   studentNo    String?  @unique
+  role         String   @default("student") // admin, student
   universityProgram Json? // { id, name, facultyId, facultyName }
   
   // İlişkiler

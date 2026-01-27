@@ -57,7 +57,14 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
 
     return res.status(200).json({ user, group });
   } catch (error: any) {
-    console.error("Error syncing user:", error);
+    console.error(
+      "❌ CRITICAL ERROR IN SYNC USER:",
+      JSON.stringify(error, null, 2),
+    );
+    if (error instanceof Error) {
+      console.error("Error Message:", error.message);
+      console.error("Error Stack:", error.stack);
+    }
 
     // Handle Unique Constraint Violation (P2002)
     if (error.code === "P2002") {
@@ -93,12 +100,10 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
           });
           return res.status(200).json({ user, group });
         } catch (retryErr) {
-          return res
-            .status(500)
-            .json({
-              error: "Failed to resolve studentNo conflict",
-              details: retryErr,
-            });
+          return res.status(500).json({
+            error: "Failed to resolve studentNo conflict",
+            details: retryErr,
+          });
         }
       }
 
@@ -146,6 +151,34 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
+// GET /api/users - List all users (Admin only)
+router.get("/", async (req: any, res: Response): Promise<any> => {
+  try {
+    const userUid = req.user?.uid;
+
+    // Fetch user from DB to check role
+    const dbUser = await prisma.user.findUnique({
+      where: { uid: userUid },
+    });
+
+    if (dbUser?.role !== "admin") {
+      return res.status(403).json({ error: "Unauthorized access" });
+    }
+
+    const users = await prisma.user.findMany({
+      include: {
+        group: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json(users);
+  } catch (error) {
+    console.error("Error listing users:", error);
+    return res.status(500).json({ error: "Failed to list users" });
+  }
+});
+
 // GET /api/users/:uid - Kullanıcı bilgilerini getir (Firebase UID ile)
 router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
   try {
@@ -162,7 +195,7 @@ router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    return res.json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching user:", error);
     return res.status(500).json({ error: "Failed to fetch user" });
@@ -170,32 +203,41 @@ router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
 });
 
 // PUT /api/users/program - Update university program info
-router.put("/program", async (req: any, res): Promise<any> => {
+router.put("/program", async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = req.user.uid;
-    const { id, name, facultyId, facultyName } = req.body;
-
-    if (!id || !name || !facultyId || !facultyName) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    await prisma.user.update({
-      where: { uid: userId },
-      data: {
-        universityProgram: {
-          id,
-          name,
-          facultyId,
-          facultyName,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    });
-
     return res.json({ success: true });
   } catch (error) {
     console.error("Error saving program info:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/users/:uid - Kullanıcıyı ve tüm verilerini sil
+router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
+  try {
+    const { uid } = req.params;
+    const userUid = req.user?.uid;
+
+    // Fetch requester from DB to check role
+    const dbUser = await prisma.user.findUnique({
+      where: { uid: userUid },
+    });
+
+    // Admin silinebilir (kendi hesabı değilse veya adminse)
+    if (dbUser?.role !== "admin" && userUid !== uid) {
+      return res.status(403).json({ error: "Unauthorized access" });
+    }
+
+    // Prisma schema'da Cascade silme tanımlı olduğu için (onDelete: Cascade),
+    // Kullanıcıyı silince mesajları, dosyaları vs. otomatik silinir.
+    await prisma.user.delete({
+      where: { uid: uid as string },
+    });
+
+    return res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({ error: "Failed to delete user" });
   }
 });
 
