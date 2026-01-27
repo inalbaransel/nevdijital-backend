@@ -6,8 +6,16 @@ const prisma = new PrismaClient();
 
 // POST /api/users - Firebase user sync (create or update)
 router.post("/", async (req: Request, res: Response): Promise<any> => {
-  const { uid, email, name, photoURL, department, classLevel, studentNo } =
-    req.body;
+  const {
+    uid,
+    email,
+    name,
+    photoURL,
+    department,
+    classLevel,
+    studentNo,
+    role,
+  } = req.body;
   // Force redeploy fix
   let group: any;
 
@@ -41,6 +49,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: parseInt(classLevel as string),
         studentNo: (studentNo as string) || null,
+        role: (role as string) || "student",
         groupId: group.id,
       },
       create: {
@@ -51,6 +60,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: parseInt(classLevel as string),
         studentNo: (studentNo as string) || null,
+        role: (role as string) || "student",
         groupId: group.id,
       },
     });
