@@ -22,7 +22,16 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   } = req.body;
   const userUid = (req as any).user?.uid;
 
-  console.log("📝 SYNC USER PAYLOAD:", req.body); // DEBUG LOG
+  console.log(`📝 [SYNC START] Payload UID: ${uid} | Token UID: ${userUid}`);
+
+  if (uid !== userUid) {
+    console.error(
+      `🚨 [CRITICAL] UID MISMATCH! Payload: ${uid} vs Token: ${userUid}`,
+    );
+    // OPTIONAL: Enforce match? For now, let's just log it loudly.
+  }
+
+  console.log("📝 SYNC USER PAYLOAD:", JSON.stringify(req.body, null, 2)); // DEBUG LOG
 
   // Force redeploy fix
   let group: any;

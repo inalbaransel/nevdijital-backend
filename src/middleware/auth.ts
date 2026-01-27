@@ -28,6 +28,10 @@ export async function authenticateToken(
     // Verify token with Firebase Admin
     const decodedToken = await admin.auth().verifyIdToken(token);
 
+    console.log(
+      `🔐 [AuthMiddleware] Token verified. UID: ${decodedToken.uid}, Email: ${decodedToken.email}`,
+    );
+
     // Attach user info to request
     req.user = {
       uid: decodedToken.uid,
@@ -39,7 +43,7 @@ export async function authenticateToken(
 
     next();
   } catch (error) {
-    console.error("Token verification error:", error);
+    console.error("❌ [AuthMiddleware] Token verification FAILED:", error);
     res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
     return;
   }
