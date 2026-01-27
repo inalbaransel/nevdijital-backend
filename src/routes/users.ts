@@ -16,6 +16,9 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     classLevel,
     studentNo,
     role,
+    personalEmail,
+    phone,
+    kvkkAccepted,
   } = req.body;
   const userUid = (req as any).user?.uid;
   // Force redeploy fix
@@ -86,6 +89,9 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: classLevel as string,
         studentNo: (studentNo as string) || null,
+        personalEmail: (personalEmail as string) || null,
+        phone: (phone as string) || null,
+        kvkkAccepted: kvkkAccepted === true,
         role: finalRole,
         groupId: group.id,
       },
@@ -97,6 +103,9 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         department: department as string,
         classLevel: classLevel as string,
         studentNo: (studentNo as string) || null,
+        personalEmail: (personalEmail as string) || null,
+        phone: (phone as string) || null,
+        kvkkAccepted: kvkkAccepted === true,
         role: finalRole,
         groupId: group.id,
       },
@@ -297,6 +306,133 @@ router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
   } catch (error) {
     console.error("Error deleting user:", error);
     return res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
+// POST /api/users/verify - Verify student via school API
+router.post("/verify", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { studentId } = req.body;
+
+    if (!studentId) {
+      return res.status(400).json({ error: "Student ID is required" });
+    }
+
+    const studentData =
+      await studentVerificationService.verifyStudent(studentId);
+
+    return res.status(200).json({
+      success: true,
+      ...studentData,
+    });
+  } catch (error: any) {
+    console.error("Student verification error:", error);
+    return res.status(400).json({
+      success: false,
+      error: error.message || "Failed to verify student",
+    });
+  }
+});
+
+// GET /api/users/me - Get current authenticated user
+router.get("/me", async (req: any, res: Response): Promise<any> => {
+  try {
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { uid: userUid },
+      include: { group: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    return res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+// PUT /api/users/me - Update current user's profile
+router.put("/me", async (req: any, res: Response): Promise<any> => {
+  try {
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const {
+      name,
+      photoURL,
+      personalEmail,
+      phone,
+      department,
+      classLevel,
+      studentNo,
+    } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { uid: userUid },
+      data: {
+        ...(name && { name }),
+        ...(photoURL !== undefined && { photoURL }),
+        ...(personalEmail !== undefined && { personalEmail }),
+        ...(phone !== undefined && { phone }),
+        ...(department && { department }),
+        ...(classLevel && { classLevel }),
+        ...(studentNo !== undefined && { studentNo }),
+      },
+      include: { group: true },
+    });
+
+    return res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// GET /api/users/lookup - Find user by studentId or email
+router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { studentId, email } = req.query;
+
+    if (!studentId && !email) {
+      return res
+        .status(400)
+        .json({ error: "Provide studentId or email to lookup" });
+    }
+
+    const where: any = {};
+    if (studentId) where.studentNo = studentId as string;
+    if (email) where.email = email as string;
+
+    const user = await prisma.user.findFirst({
+      where,
+      select: {
+        uid: true,
+        email: true,
+        studentNo: true,
+        name: true,
+        department: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("Lookup error:", error);
+    return res.status(500).json({ error: "Failed to lookup user" });
   }
 });
 

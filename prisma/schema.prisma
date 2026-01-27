@@ -26,6 +26,11 @@ model User {
   role         String   @default("student") // admin, student
   universityProgram Json? // { id, name, facultyId, facultyName }
   
+  // Kişisel bilgiler (Firestore'dan migrate)
+  personalEmail String? // Okul dışı email
+  phone         String? // Telefon numarası
+  kvkkAccepted  Boolean @default(false) // KVKK onayı
+  
   // İlişkiler
   groupId      String?
   group        Group?   @relation(fields: [groupId], references: [id])
@@ -40,6 +45,7 @@ model User {
   // Presence
   isOnline  Boolean  @default(false)
   lastSeen  DateTime @default(now())
+
   
   @@index([groupId])
   @@index([uid])
