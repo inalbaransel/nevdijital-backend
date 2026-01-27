@@ -332,30 +332,84 @@ router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
 router.get("/me", async (req: any, res: Response): Promise<any> => {
   try {
     const userUid = req.user?.uid;
-    console.log(`🔍 [Backend] GET /me requested by UID: ${userUid}`);
+    const userEmail = req.user?.email;
+
+    console.log(
+      `🔍 [Backend] GET /me requested by UID: ${userUid}, Email: ${userEmail}`,
+    );
 
     if (!userUid) {
       console.warn("⚠️ [Backend] GET /me - No UID in request (Unauthorized)");
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const user = await prisma.user.findUnique({
+    // 1. Try finding by UID
+    let user = await prisma.user.findUnique({
       where: { uid: userUid },
       include: { group: true },
     });
 
+    // 2. CHECK FOR "MISAFIR" GHOST ACCOUNT or MISSING USER
+    // If user is not found OR it's a "Misafir" placeholder...
+    const isGhost =
+      user &&
+      (user.name === "Misafir" || user.name === "" || user.name === userEmail);
+
+    if (!user || (isGhost && userEmail)) {
+      if (!user)
+        console.warn(`❌ [Backend] User NOT found by UID: ${userUid}.`);
+      if (isGhost)
+        console.warn(
+          `👻 [Backend] Found "Misafir" Ghost Account for UID: ${userUid}. Checking for Real Account...`,
+        );
+
+      // 3. Fallback: Try finding REAL account by Email
+      if (userEmail) {
+        const existingUserByEmail = await prisma.user.findFirst({
+          where: {
+            email: userEmail,
+            uid: { not: userUid }, // Don't find the ghost itself
+          },
+        });
+
+        if (existingUserByEmail) {
+          console.warn(
+            `⚠️ [Backend] Found REAL user by Email (${userEmail})! ID: ${existingUserByEmail.id}`,
+          );
+          console.log(
+            "🛠️ Performing Self-Repair: Merging Ghost into Real Account...",
+          );
+
+          // A. If we have a ghost account (Misafir), DELETE IT to free up the UID
+          if (user) {
+            console.log(`🗑️ Deleting Ghost Account (ID: ${user.id})...`);
+            await prisma.user.delete({ where: { id: user.id } });
+          }
+
+          // B. Update the REAL account to have the NEW UID
+          user = await prisma.user.update({
+            where: { id: existingUserByEmail.id },
+            data: {
+              uid: userUid,
+              // Update online status while we're at it
+              isOnline: true,
+            },
+            include: { group: true },
+          });
+          console.log("✅ [Backend] Self-Repair (Merge) Successful!");
+        } else {
+          if (isGhost)
+            console.log("ℹ️ No better account found. Keeping Misafir.");
+        }
+      }
+    }
+
     if (!user) {
-      console.warn(
-        `❌ [Backend] GET /me - User NOT found in DB for UID: ${userUid}`,
-      );
-      // DEBUG: List all users to see if there's a mismatch
-      // const allUsers = await prisma.user.findMany({ select: { uid: true, email: true } });
-      // console.log("Example DB Users:", allUsers.slice(0, 3));
       return res.status(404).json({ error: "User not found" });
     }
 
     console.log(
-      `✅ [Backend] GET /me - Found user: ${user.name} (${user.email})`,
+      `✅ [Backend] GET /me - Returning user: ${user.name} (${user.email})`,
     );
     return res.status(200).json(user);
   } catch (error) {
