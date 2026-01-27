@@ -77,7 +77,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
       where: {
         department_classLevel: {
           department: department as string,
-          classLevel: parseInt(classLevel as string),
+          classLevel: classLevel as string,
         },
       },
     });
@@ -91,7 +91,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     const group = await prisma.group.create({
       data: {
         department: department as string,
-        classLevel: parseInt(classLevel as string),
+        classLevel: classLevel as string,
       },
     });
 

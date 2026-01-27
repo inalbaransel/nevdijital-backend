@@ -21,7 +21,7 @@ model User {
   
   // Öğrenci bilgileri
   department   String
-  classLevel   Int
+  classLevel   String
   studentNo    String?  @unique
   role         String   @default("student") // admin, student
   universityProgram Json? // { id, name, facultyId, facultyName }
@@ -46,7 +46,7 @@ model User {
 model Group {
   id          String   @id @default(uuid())
   department  String   // "Bilgisayar Mühendisliği"
-  classLevel  Int      // 1, 2, 3, 4
+  classLevel  String   // "1", "2", "Hazırlık"
   
   // İlişkiler
   members     User[]

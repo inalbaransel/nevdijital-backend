@@ -88,4 +88,53 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
+// DELETE /api/messages/:id - Mesajı sil (Sadece sahibi veya Admin)
+router.delete("/:id", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const userUid = (req as any).user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Check if message exists
+    const message = await prisma.message.findUnique({
+      where: { id: id as string },
+      include: {
+        user: {
+          select: { uid: true },
+        },
+      },
+    });
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Check requester role
+    const requester = await prisma.user.findUnique({
+      where: { uid: userUid },
+    });
+
+    const isOwner = message.user.uid === userUid;
+    const isAdmin = requester?.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: You cannot delete this message" });
+    }
+
+    await prisma.message.delete({
+      where: { id: id as string },
+    });
+
+    return res.json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    return res.status(500).json({ error: "Failed to delete message" });
+  }
+});
+
 export default router;

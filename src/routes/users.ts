@@ -31,13 +31,13 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
       where: {
         department_classLevel: {
           department: department as string,
-          classLevel: parseInt(classLevel as string),
+          classLevel: classLevel as string,
         },
       },
       update: {},
       create: {
         department: department as string,
-        classLevel: parseInt(classLevel as string),
+        classLevel: classLevel as string,
       },
     });
 
@@ -84,7 +84,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         name: name as string,
         photoURL: (photoURL as string) || null,
         department: department as string,
-        classLevel: parseInt(classLevel as string),
+        classLevel: classLevel as string,
         studentNo: (studentNo as string) || null,
         role: finalRole,
         groupId: group.id,
@@ -95,7 +95,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         name: name as string,
         photoURL: (photoURL as string) || null,
         department: department as string,
-        classLevel: parseInt(classLevel as string),
+        classLevel: classLevel as string,
         studentNo: (studentNo as string) || null,
         role: finalRole,
         groupId: group.id,
@@ -130,7 +130,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
               name: name as string,
               photoURL: (photoURL as string) || null,
               department: department as string,
-              classLevel: parseInt(classLevel as string),
+              classLevel: classLevel as string,
               studentNo: null, // Clear collision
               groupId: group.id,
             },
@@ -140,7 +140,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
               name: name as string,
               photoURL: (photoURL as string) || null,
               department: department as string,
-              classLevel: parseInt(classLevel as string),
+              classLevel: classLevel as string,
               studentNo: null, // Clear collision
               groupId: group.id,
             },
@@ -173,7 +173,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
                 name: name as string,
                 photoURL: (photoURL as string) || null,
                 department: department as string,
-                classLevel: parseInt(classLevel as string),
+                classLevel: classLevel as string,
                 // Keep existing studentNo if valid, or update if provided?
                 // Let's defer to input but be careful of its own conflicts.
                 // Safest to keep existing or ignore if null.
