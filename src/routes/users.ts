@@ -332,8 +332,10 @@ router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
 router.get("/me", async (req: any, res: Response): Promise<any> => {
   try {
     const userUid = req.user?.uid;
+    console.log(`🔍 [Backend] GET /me requested by UID: ${userUid}`);
 
     if (!userUid) {
+      console.warn("⚠️ [Backend] GET /me - No UID in request (Unauthorized)");
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -343,9 +345,18 @@ router.get("/me", async (req: any, res: Response): Promise<any> => {
     });
 
     if (!user) {
+      console.warn(
+        `❌ [Backend] GET /me - User NOT found in DB for UID: ${userUid}`,
+      );
+      // DEBUG: List all users to see if there's a mismatch
+      // const allUsers = await prisma.user.findMany({ select: { uid: true, email: true } });
+      // console.log("Example DB Users:", allUsers.slice(0, 3));
       return res.status(404).json({ error: "User not found" });
     }
 
+    console.log(
+      `✅ [Backend] GET /me - Found user: ${user.name} (${user.email})`,
+    );
     return res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching current user:", error);
