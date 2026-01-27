@@ -26,6 +26,8 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
 
   // Force redeploy fix
   let group: any;
+  let finalRole = "student";
+  let kvkkAcceptedState = kvkkAccepted === true;
 
   try {
     if (!uid || !email || !name || !department || !classLevel) {
@@ -56,7 +58,6 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
       where: { uid: uid as string },
     });
 
-    let finalRole = "student";
     const requestedRole = (role as string) || "student";
 
     if (requestedRole === "admin") {
@@ -94,7 +95,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         studentNo: (studentNo as string) || null,
         personalEmail: (personalEmail as string) || null,
         phone: (phone as string) || null,
-        kvkkAccepted: kvkkAccepted === true,
+        kvkkAccepted: kvkkAcceptedState,
         role: finalRole,
         groupId: group.id,
       },
@@ -108,7 +109,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
         studentNo: (studentNo as string) || null,
         personalEmail: (personalEmail as string) || null,
         phone: (phone as string) || null,
-        kvkkAccepted: kvkkAccepted === true,
+        kvkkAccepted: kvkkAcceptedState,
         role: finalRole,
         groupId: group.id,
       },
@@ -178,7 +179,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
               studentNo: (studentNo as string) || null,
               groupId: group.id,
               role: finalRole,
-              kvkkAccepted: kvkkAccepted === true,
+              kvkkAccepted: kvkkAcceptedState,
             },
           });
           return res.status(200).json({ user, group });
