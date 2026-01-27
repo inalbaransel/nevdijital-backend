@@ -39,11 +39,9 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
 
     if (missingFields.length > 0) {
       console.warn("⚠️ [Backend] Sync Failed - Missing Fields:", missingFields);
-      return res
-        .status(400)
-        .json({
-          error: `Missing required fields: ${missingFields.join(", ")}`,
-        });
+      return res.status(400).json({
+        error: `Missing required fields: ${missingFields.join(", ")}`,
+      });
     }
 
     // --- SECURITY HARDENING ---
@@ -423,6 +421,12 @@ router.get("/me", async (req: any, res: Response): Promise<any> => {
     console.log(
       `✅ [Backend] GET /me - Returning user: ${user.name} (${user.email})`,
     );
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     return res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching current user:", error);
@@ -485,6 +489,8 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
     if (studentId) where.studentNo = studentId as string;
     if (email) where.email = email as string;
 
+    console.log("🔍 [Backend] Lookup query:", where);
+
     const user = await prisma.user.findFirst({
       where,
       select: {
@@ -493,8 +499,16 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
         studentNo: true,
         name: true,
         department: true,
+        role: true,
+        classLevel: true,
       },
     });
+
+    if (user) {
+      console.log(`✅ [Backend] User found: ${user.name} (${user.studentNo})`);
+    } else {
+      console.warn(`❌ [Backend] User NOT found for query:`, where);
+    }
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
