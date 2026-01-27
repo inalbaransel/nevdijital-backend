@@ -30,8 +30,20 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   let kvkkAcceptedState = kvkkAccepted === true;
 
   try {
-    if (!uid || !email || !name || !department || !classLevel) {
-      return res.status(400).json({ error: "Missing required fields" });
+    const missingFields = [];
+    if (!uid) missingFields.push("uid");
+    if (!email) missingFields.push("email");
+    if (!name) missingFields.push("name");
+    if (!department) missingFields.push("department");
+    if (!classLevel) missingFields.push("classLevel");
+
+    if (missingFields.length > 0) {
+      console.warn("⚠️ [Backend] Sync Failed - Missing Fields:", missingFields);
+      return res
+        .status(400)
+        .json({
+          error: `Missing required fields: ${missingFields.join(", ")}`,
+        });
     }
 
     // --- SECURITY HARDENING ---
