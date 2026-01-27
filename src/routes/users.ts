@@ -21,6 +21,9 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     kvkkAccepted,
   } = req.body;
   const userUid = (req as any).user?.uid;
+
+  console.log("📝 SYNC USER PAYLOAD:", req.body); // DEBUG LOG
+
   // Force redeploy fix
   let group: any;
 
@@ -126,12 +129,34 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     if (error.code === "P2002") {
       const target = error.meta?.target;
 
-      // Case 1: Duplicate studentNo -> Retry with null
+      // Case 1: Duplicate studentNo -> Claim it! (Clear from old user)
       if (Array.isArray(target) && target.includes("studentNo")) {
-        console.warn("⚠️ Duplicate studentNo detected. Retrying with null...");
+        console.warn(
+          `⚠️ Duplicate studentNo (${studentNo}) detected. Claiming it from old user...`,
+        );
         try {
-          if (!group) throw new Error("Group missing during retry");
+          if (!studentNo) {
+            // Should not happen if target includes studentNo but safety check
+            throw new Error("Collision on null studentNo?");
+          }
 
+          // 1. Find the user holding this studentNo
+          const conflictingUser = await prisma.user.findFirst({
+            where: { studentNo: studentNo as string },
+          });
+
+          if (conflictingUser) {
+            console.log(
+              `Found conflicting user ${conflictingUser.uid}. Clearing their studentNo...`,
+            );
+            // 2. Nullify the old user's studentNo
+            await prisma.user.update({
+              where: { id: conflictingUser.id },
+              data: { studentNo: null },
+            });
+          }
+
+          // 3. Retry Upsert for THIS user (now the number is free)
           const user = await prisma.user.upsert({
             where: { uid: uid as string },
             update: {
@@ -140,7 +165,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
               photoURL: (photoURL as string) || null,
               department: department as string,
               classLevel: classLevel as string,
-              studentNo: null, // Clear collision
+              studentNo: (studentNo as string) || null,
               groupId: group.id,
             },
             create: {
@@ -150,15 +175,18 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
               photoURL: (photoURL as string) || null,
               department: department as string,
               classLevel: classLevel as string,
-              studentNo: null, // Clear collision
+              studentNo: (studentNo as string) || null,
               groupId: group.id,
+              role: finalRole,
+              kvkkAccepted: kvkkAccepted === true,
             },
           });
           return res.status(200).json({ user, group });
-        } catch (retryErr) {
+        } catch (retryErr: any) {
+          console.error("Collision resolution failed:", retryErr);
           return res.status(500).json({
             error: "Failed to resolve studentNo conflict",
-            details: retryErr,
+            details: retryErr.message,
           });
         }
       }
