@@ -309,31 +309,6 @@ router.delete("/:uid", async (req: any, res: Response): Promise<any> => {
   }
 });
 
-// POST /api/users/verify - Verify student via school API
-router.post("/verify", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { studentId } = req.body;
-
-    if (!studentId) {
-      return res.status(400).json({ error: "Student ID is required" });
-    }
-
-    const studentData =
-      await studentVerificationService.verifyStudent(studentId);
-
-    return res.status(200).json({
-      success: true,
-      ...studentData,
-    });
-  } catch (error: any) {
-    console.error("Student verification error:", error);
-    return res.status(400).json({
-      success: false,
-      error: error.message || "Failed to verify student",
-    });
-  }
-});
-
 // GET /api/users/me - Get current authenticated user
 router.get("/me", async (req: any, res: Response): Promise<any> => {
   try {
