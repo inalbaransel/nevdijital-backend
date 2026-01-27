@@ -83,11 +83,13 @@ export function validateFileSize(fileSize: number): boolean {
  */
 export function getFileType(
   mimetype: string,
-): "MUSIC" | "NOTE" | "IMAGE" | "DOCUMENT" {
+): "MUSIC" | "NOTE" | "IMAGE" | "VIDEO" | "DOCUMENT" {
   if (mimetype.startsWith("audio/")) {
     return "MUSIC";
   } else if (mimetype.startsWith("image/")) {
     return "IMAGE";
+  } else if (mimetype.startsWith("video/")) {
+    return "VIDEO";
   } else if (
     mimetype === "application/pdf" ||
     mimetype === "application/msword" ||

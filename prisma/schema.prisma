@@ -142,6 +142,7 @@ enum FileType {
   MUSIC
   NOTE
   IMAGE
+  VIDEO
   DOCUMENT
 }
 

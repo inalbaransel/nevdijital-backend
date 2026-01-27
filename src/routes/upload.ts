@@ -47,6 +47,7 @@ router.post(
         MUSIC: "music",
         NOTE: "notes",
         IMAGE: "images",
+        VIDEO: "images", // Videos go to images folder
         DOCUMENT: "documents",
       };
       const folder = folderMap[fileType] || "documents";

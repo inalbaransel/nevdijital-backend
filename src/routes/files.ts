@@ -97,9 +97,18 @@ router.post(
 router.delete("/:fileId", async (req: Request, res: Response): Promise<any> => {
   try {
     const { fileId } = req.params;
-    const { userId } = req.body;
+    const userUid = (req as any).user?.uid;
 
-    // Verify ownership
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Check requester role
+    const requester = await prisma.user.findUnique({
+      where: { uid: userUid },
+    });
+
+    // Verify ownership or check if admin
     const file = await prisma.file.findUnique({
       where: { id: fileId as string },
     });
@@ -108,8 +117,14 @@ router.delete("/:fileId", async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: "File not found" });
     }
 
-    if (file.userId !== userId) {
-      return res.status(403).json({ error: "Unauthorized" });
+    // Owner check: compare file's userId with requester's database ID
+    const isOwner = file.userId === requester?.id;
+    const isAdmin = requester?.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: You cannot delete this file" });
     }
 
     // 1. Delete from R2
