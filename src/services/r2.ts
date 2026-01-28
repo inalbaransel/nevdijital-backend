@@ -23,7 +23,7 @@ const PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
  */
 export async function uploadFile(
   file: Express.Multer.File,
-  folder: "music" | "notes" | "images" | "documents" = "documents",
+  folder: "music" | "notes" | "images" | "documents" | "videos" = "documents",
 ): Promise<{ fileUrl: string; fileName: string }> {
   try {
     // Generate unique filename

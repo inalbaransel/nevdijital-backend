@@ -42,12 +42,12 @@ router.post(
       const fileType = getFileType(file.mimetype);
       const folderMap: Record<
         string,
-        "music" | "notes" | "images" | "documents"
+        "music" | "notes" | "images" | "documents" | "videos"
       > = {
         MUSIC: "music",
         NOTE: "notes",
         IMAGE: "images",
-        VIDEO: "images", // Videos go to images folder
+        VIDEO: "videos", // Videos go to videos folder
         DOCUMENT: "documents",
       };
       const folder = folderMap[fileType] || "documents";
