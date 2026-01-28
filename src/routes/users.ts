@@ -1,9 +1,17 @@
 import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import admin from "../config/firebase";
+import multer from "multer";
+import { uploadFile } from "../services/r2";
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Multer setup for memory storage (for R2 upload)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for profile photos
+});
 
 // POST /api/users - Firebase user sync (create or update)
 router.post("/", async (req: Request, res: Response): Promise<any> => {
@@ -419,6 +427,45 @@ router.get("/me", async (req: any, res: Response): Promise<any> => {
     return res.status(500).json({ error: "Failed to fetch user" });
   }
 });
+
+// POST /api/users/profile-photo - Upload and update profile picture
+router.post(
+  "/profile-photo",
+  upload.single("file"),
+  async (req: any, res: Response): Promise<any> => {
+    try {
+      const userUid = req.user?.uid;
+
+      if (!userUid) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // 1. Upload to Cloudflare R2 (images folder)
+      console.log(`[Backend] Uploading profile photo for ${userUid}...`);
+      const { fileUrl } = await uploadFile(file, "images");
+
+      // 2. Update User Profile in Database
+      const updatedUser = await prisma.user.update({
+        where: { uid: userUid },
+        data: {
+          photoURL: fileUrl,
+        },
+        include: { group: true },
+      });
+
+      console.log(`✅ [Backend] Profile photo updated: ${fileUrl}`);
+      return res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error("Error uploading profile photo:", error);
+      return res.status(500).json({ error: "Failed to upload profile photo" });
+    }
+  },
+);
 
 // PUT /api/users/me - Update current user's profile
 router.put("/me", async (req: any, res: Response): Promise<any> => {
