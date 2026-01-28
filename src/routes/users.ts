@@ -47,6 +47,7 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
         personalEmail: true,
         phone: true,
         kvkkAccepted: true,
+        photoURL: true,
       },
     });
 
