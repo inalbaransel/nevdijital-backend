@@ -70,7 +70,7 @@ app.get("/health", (_req: Request, res: Response) => {
 // API Routes (protected with authentication)
 app.use("/api/messages", authenticateToken, messagesRouter);
 app.use("/api/groups", authenticateToken, groupsRouter);
-app.use("/api/users", authenticateToken, usersRouter);
+app.use("/api/users", usersRouter);
 app.use("/api/files", authenticateToken, filesRouter);
 app.use("/api/upload", authenticateToken, uploadRateLimiter, uploadRouter);
 app.use("/api/statuses", authenticateToken, statusesRouter);

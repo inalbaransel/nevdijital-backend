@@ -13,7 +13,111 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for profile photos
 });
 
+import { authenticateToken } from "../middleware/auth";
+
 // POST /api/users - Firebase user sync (create or update)
+// POST /api/users/lookup - Public endpoint to find user
+router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { studentId, email } = req.query;
+
+    if (!studentId && !email) {
+      return res
+        .status(400)
+        .json({ error: "Provide studentId or email to lookup" });
+    }
+
+    const where: any = {};
+    if (studentId) where.studentNo = studentId as string;
+    if (email) where.email = email as string;
+
+    console.log("🔍 [Backend] Lookup query:", where);
+
+    // 1. Check Local DB (Prisma)
+    const user = await prisma.user.findFirst({
+      where,
+      select: {
+        uid: true,
+        email: true,
+        studentNo: true,
+        name: true,
+        department: true,
+        role: true,
+        classLevel: true,
+        personalEmail: true,
+        phone: true,
+        kvkkAccepted: true,
+      },
+    });
+
+    if (user) {
+      console.log(`✅ [Backend] User found in DB: ${user.name}`);
+      return res.status(200).json(user);
+    }
+
+    // 2. Not in DB? Check Firebase Auth (Migration Support)
+    // Only if searching by studentId (construct email) or direct email
+    let searchEmail = email as string;
+    if (!searchEmail && studentId) {
+      searchEmail = `${studentId}@std.nisantasi.edu.tr`;
+    }
+
+    let authError = null;
+    let authFound = false;
+
+    if (searchEmail) {
+      try {
+        const fbUser = await admin.auth().getUserByEmail(searchEmail);
+        if (fbUser) {
+          authFound = true;
+          console.warn(
+            `⚠️ [Backend] User found in Firebase Auth BUT NOT in DB. (Migration case): ${fbUser.email}`,
+          );
+          // Return special response so frontend knows to treat as "Existing" but needs sync
+          return res.status(200).json({
+            existsInAuth: true,
+            email: fbUser.email,
+            uid: fbUser.uid,
+          });
+        }
+      } catch (fbErr: any) {
+        if (fbErr.code === "auth/user-not-found") {
+          // Really doesn't exist anywhere
+          console.warn(
+            `❌ [Backend] User NOT found in DB or Firebase Auth: ${searchEmail}`,
+          );
+          authError = "User not found in Firebase";
+        } else {
+          console.error("Firebase Auth Lookup Error:", fbErr);
+          authError = fbErr.message || "Unknown Auth Error";
+        }
+      }
+    }
+
+    return res.status(404).json({
+      error: "User not found",
+      debug: {
+        checkedDB: true,
+        checkedAuth: !!searchEmail,
+        authEmail: searchEmail,
+        authFound,
+        authError,
+      },
+    });
+  } catch (error: any) {
+    console.error("Lookup error:", error);
+    return res.status(500).json({
+      error: "Failed to lookup user",
+      details: error.message,
+    });
+  }
+});
+
+// Protect all routes below this line
+router.use(authenticateToken);
+
+// POST /api/users - Firebase user sync (create or update)
+
 router.post("/", async (req: Request, res: Response): Promise<any> => {
   const {
     uid,
@@ -507,124 +611,31 @@ router.put("/me", async (req: any, res: Response): Promise<any> => {
   }
 });
 
-// GET /api/users/lookup - Find user by studentId or email
-router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { studentId, email } = req.query;
-
-    if (!studentId && !email) {
-      return res
-        .status(400)
-        .json({ error: "Provide studentId or email to lookup" });
-    }
-
-    const where: any = {};
-    if (studentId) where.studentNo = studentId as string;
-    if (email) where.email = email as string;
-
-    console.log("🔍 [Backend] Lookup query:", where);
-
-    // 1. Check Local DB (Prisma)
-    const user = await prisma.user.findFirst({
-      where,
-      select: {
-        uid: true,
-        email: true,
-        studentNo: true,
-        name: true,
-        department: true,
-        role: true,
-        classLevel: true,
-        personalEmail: true,
-        phone: true,
-        kvkkAccepted: true,
-      },
-    });
-
-    if (user) {
-      console.log(`✅ [Backend] User found in DB: ${user.name}`);
-      return res.status(200).json(user);
-    }
-
-    // 2. Not in DB? Check Firebase Auth (Migration Support)
-    // Only if searching by studentId (construct email) or direct email
-    let searchEmail = email as string;
-    if (!searchEmail && studentId) {
-      searchEmail = `${studentId}@std.nisantasi.edu.tr`;
-    }
-
-    let authError = null;
-    let authFound = false;
-
-    if (searchEmail) {
-      try {
-        const fbUser = await admin.auth().getUserByEmail(searchEmail);
-        if (fbUser) {
-          authFound = true;
-          console.warn(
-            `⚠️ [Backend] User found in Firebase Auth BUT NOT in DB. (Migration case): ${fbUser.email}`,
-          );
-          // Return special response so frontend knows to treat as "Existing" but needs sync
-          return res.status(200).json({
-            existsInAuth: true,
-            email: fbUser.email,
-            uid: fbUser.uid,
-          });
-        }
-      } catch (fbErr: any) {
-        if (fbErr.code === "auth/user-not-found") {
-          // Really doesn't exist anywhere
-          console.warn(
-            `❌ [Backend] User NOT found in DB or Firebase Auth: ${searchEmail}`,
-          );
-          authError = "User not found in Firebase";
-        } else {
-          console.error("Firebase Auth Lookup Error:", fbErr);
-          authError = fbErr.message || "Unknown Auth Error";
-        }
-      }
-    }
-
-    return res.status(404).json({
-      error: "User not found",
-      debug: {
-        checkedDB: true,
-        checkedAuth: !!searchEmail,
-        authEmail: searchEmail,
-        authFound,
-        authError,
-      },
-    });
-  } catch (error: any) {
-    console.error("Lookup error:", error);
-    return res.status(500).json({
-      error: "Failed to lookup user",
-      details: error.message,
-    });
-  }
-});
-
 // GET /api/users/:uid - Kullanıcı bilgilerini getir (Firebase UID ile)
-router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { uid } = req.params;
+router.get(
+  "/:uid",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<any> => {
+    try {
+      const { uid } = req.params;
 
-    const user = await prisma.user.findUnique({
-      where: { uid: uid as string },
-      include: {
-        group: true,
-      },
-    });
+      const user = await prisma.user.findUnique({
+        where: { uid: uid as string },
+        include: {
+          group: true,
+        },
+      });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      return res.status(200).json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      return res.status(500).json({ error: "Failed to fetch user" });
     }
-
-    return res.status(200).json(user);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    return res.status(500).json({ error: "Failed to fetch user" });
-  }
-});
+  },
+);
 
 export default router;
