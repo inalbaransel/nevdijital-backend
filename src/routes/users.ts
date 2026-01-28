@@ -534,6 +534,9 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
         department: true,
         role: true,
         classLevel: true,
+        personalEmail: true,
+        phone: true,
+        kvkkAccepted: true,
       },
     });
 
