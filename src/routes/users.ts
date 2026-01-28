@@ -524,6 +524,7 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
 
     console.log("🔍 [Backend] Lookup query:", where);
 
+    // 1. Check Local DB (Prisma)
     const user = await prisma.user.findFirst({
       where,
       select: {
@@ -541,16 +542,44 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
     });
 
     if (user) {
-      console.log(`✅ [Backend] User found: ${user.name} (${user.studentNo})`);
-    } else {
-      console.warn(`❌ [Backend] User NOT found for query:`, where);
+      console.log(`✅ [Backend] User found in DB: ${user.name}`);
+      return res.status(200).json(user);
     }
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    // 2. Not in DB? Check Firebase Auth (Migration Support)
+    // Only if searching by studentId (construct email) or direct email
+    let searchEmail = email as string;
+    if (!searchEmail && studentId) {
+      searchEmail = `${studentId}@std.nisantasi.edu.tr`;
     }
 
-    return res.status(200).json(user);
+    if (searchEmail) {
+      try {
+        const fbUser = await admin.auth().getUserByEmail(searchEmail);
+        if (fbUser) {
+          console.warn(
+            `⚠️ [Backend] User found in Firebase Auth BUT NOT in DB. (Migration case): ${fbUser.email}`,
+          );
+          // Return special response so frontend knows to treat as "Existing" but needs sync
+          return res.status(200).json({
+            existsInAuth: true,
+            email: fbUser.email,
+            uid: fbUser.uid,
+          });
+        }
+      } catch (fbErr: any) {
+        if (fbErr.code === "auth/user-not-found") {
+          // Really doesn't exist anywhere
+          console.warn(
+            `❌ [Backend] User NOT found in DB or Firebase Auth: ${searchEmail}`,
+          );
+        } else {
+          console.error("Firebase Auth Lookup Error:", fbErr);
+        }
+      }
+    }
+
+    return res.status(404).json({ error: "User not found" });
   } catch (error) {
     console.error("Lookup error:", error);
     return res.status(500).json({ error: "Failed to lookup user" });
