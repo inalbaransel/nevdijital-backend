@@ -206,7 +206,15 @@ io.on("connection", async (socket) => {
   // Status update notification
   socket.on("update_status", (data: { groupId: string; status: any }) => {
     const { groupId, status } = data;
-    if (groupId && status) {
+    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+
+    // Check if status owner is Admin (using status.user.uid or linking back to db user)
+    // status.user is usually populated in the response from POST /statuses
+    const isGlobal = status?.user?.uid === ADMIN_UID;
+
+    if (isGlobal) {
+      io.emit("status_updated", status); // Broadcast to everyone
+    } else if (groupId && status) {
       io.to(groupId).emit("status_updated", status);
     }
   });

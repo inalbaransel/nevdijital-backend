@@ -10,13 +10,27 @@ router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
     const { groupId } = req.params;
     const now = new Date();
 
-    const statuses = await prisma.status.findMany({
-      where: {
-        groupId: groupId as string,
-        expiresAt: {
-          gt: now,
-        },
+    // Auth middleware attaches user to req
+    const user = (req as any).user;
+    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+    const isAdmin = user?.uid === ADMIN_UID || user?.role === "admin";
+
+    let whereClause: any = {
+      expiresAt: {
+        gt: now,
       },
+    };
+
+    if (isAdmin) {
+      // Admin sees statuses from ALL groups
+      // No groupId constraint
+    } else {
+      // Normal user: Sees their group OR Admin's status
+      whereClause.OR = [{ groupId: groupId }, { user: { uid: ADMIN_UID } }];
+    }
+
+    const statuses = await prisma.status.findMany({
+      where: whereClause,
       orderBy: {
         createdAt: "desc",
       },
