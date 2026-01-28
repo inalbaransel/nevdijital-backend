@@ -553,10 +553,14 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
       searchEmail = `${studentId}@std.nisantasi.edu.tr`;
     }
 
+    let authError = null;
+    let authFound = false;
+
     if (searchEmail) {
       try {
         const fbUser = await admin.auth().getUserByEmail(searchEmail);
         if (fbUser) {
+          authFound = true;
           console.warn(
             `⚠️ [Backend] User found in Firebase Auth BUT NOT in DB. (Migration case): ${fbUser.email}`,
           );
@@ -573,16 +577,30 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
           console.warn(
             `❌ [Backend] User NOT found in DB or Firebase Auth: ${searchEmail}`,
           );
+          authError = "User not found in Firebase";
         } else {
           console.error("Firebase Auth Lookup Error:", fbErr);
+          authError = fbErr.message || "Unknown Auth Error";
         }
       }
     }
 
-    return res.status(404).json({ error: "User not found" });
-  } catch (error) {
+    return res.status(404).json({
+      error: "User not found",
+      debug: {
+        checkedDB: true,
+        checkedAuth: !!searchEmail,
+        authEmail: searchEmail,
+        authFound,
+        authError,
+      },
+    });
+  } catch (error: any) {
     console.error("Lookup error:", error);
-    return res.status(500).json({ error: "Failed to lookup user" });
+    return res.status(500).json({
+      error: "Failed to lookup user",
+      details: error.message,
+    });
   }
 });
 
