@@ -273,29 +273,6 @@ router.get("/", async (req: any, res: Response): Promise<any> => {
   }
 });
 
-// GET /api/users/:uid - Kullanıcı bilgilerini getir (Firebase UID ile)
-router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { uid } = req.params;
-
-    const user = await prisma.user.findUnique({
-      where: { uid: uid as string },
-      include: {
-        group: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    return res.status(200).json(user);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    return res.status(500).json({ error: "Failed to fetch user" });
-  }
-});
-
 // PUT /api/users/program - Update university program info
 router.put("/program", async (req: Request, res: Response): Promise<any> => {
   try {
@@ -527,6 +504,29 @@ router.get("/lookup", async (req: Request, res: Response): Promise<any> => {
   } catch (error) {
     console.error("Lookup error:", error);
     return res.status(500).json({ error: "Failed to lookup user" });
+  }
+});
+
+// GET /api/users/:uid - Kullanıcı bilgilerini getir (Firebase UID ile)
+router.get("/:uid", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { uid } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { uid: uid as string },
+      include: {
+        group: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return res.status(500).json({ error: "Failed to fetch user" });
   }
 });
 
