@@ -136,7 +136,7 @@ io.on("connection", async (socket) => {
   // Join a group chat room (Explicit join)
   socket.on("join_group", async (groupId: string) => {
     try {
-      const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+      const ADMIN_UID = "jHDv62Lg4QRj31Gmho5ENIDW4QX2";
 
       // Special case for Admin Global Stories
       if (groupId === "global") {
@@ -222,7 +222,7 @@ io.on("connection", async (socket) => {
   // Status update notification
   socket.on("update_status", (data: { groupId: string; status: any }) => {
     const { groupId, status } = data;
-    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+    const ADMIN_UID = "jHDv62Lg4QRj31Gmho5ENIDW4QX2";
 
     const isGlobal = status?.user?.uid === ADMIN_UID;
 

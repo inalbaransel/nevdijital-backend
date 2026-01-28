@@ -12,7 +12,7 @@ router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
 
     // Auth middleware attaches user to req
     const userAuth = (req as any).user;
-    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+    const ADMIN_UID = "jHDv62Lg4QRj31Gmho5ENIDW4QX2";
 
     // Re-verify Admin status from DB for robustness
     const dbUser = await prisma.user.findUnique({
@@ -67,7 +67,7 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, groupId, text, music } = req.body;
     const userAuth = (req as any).user;
-    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+    const ADMIN_UID = "jHDv62Lg4QRj31Gmho5ENIDW4QX2";
 
     if (!userId || !groupId) {
       return res.status(400).json({ error: "UserId and GroupId are required" });
