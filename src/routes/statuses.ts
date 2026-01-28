@@ -11,9 +11,15 @@ router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
     const now = new Date();
 
     // Auth middleware attaches user to req
-    const user = (req as any).user;
+    const userAuth = (req as any).user;
     const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
-    const isAdmin = user?.uid === ADMIN_UID || user?.role === "admin";
+
+    // Re-verify Admin status from DB for robustness
+    const dbUser = await prisma.user.findUnique({
+      where: { uid: userAuth?.uid },
+      select: { role: true },
+    });
+    const isAdmin = dbUser?.role === "admin" || userAuth?.uid === ADMIN_UID;
 
     let whereClause: any = {
       expiresAt: {
@@ -23,10 +29,13 @@ router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
 
     if (isAdmin) {
       // Admin sees statuses from ALL groups
-      // No groupId constraint
     } else {
       // Normal user: Sees their group OR Admin's status
-      whereClause.OR = [{ groupId: groupId }, { user: { uid: ADMIN_UID } }];
+      const orConditions: any[] = [{ user: { uid: ADMIN_UID } }];
+      if (groupId && groupId !== "global") {
+        orConditions.push({ groupId });
+      }
+      whereClause.OR = orConditions;
     }
 
     const statuses = await prisma.status.findMany({
@@ -57,6 +66,8 @@ router.get("/:groupId", async (req: Request, res: Response): Promise<any> => {
 router.post("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, groupId, text, music } = req.body;
+    const userAuth = (req as any).user;
+    const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
 
     if (!userId || !groupId) {
       return res.status(400).json({ error: "UserId and GroupId are required" });
@@ -65,18 +76,52 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+    let effectiveGroupId = groupId;
+
+    // Handle "global" groupId for Admin
+    if (groupId === "global") {
+      const dbUser = await prisma.user.findUnique({
+        where: { uid: userAuth?.uid },
+        select: { role: true, groupId: true },
+      });
+      const isAdmin = dbUser?.role === "admin" || userAuth?.uid === ADMIN_UID;
+
+      if (isAdmin) {
+        // Find a real group ID to satisfy FK constraint
+        // We can use the admin's own group or the first available group
+        if (dbUser?.groupId) {
+          effectiveGroupId = dbUser.groupId;
+        } else {
+          const fallbackGroup = await prisma.group.findFirst();
+          if (fallbackGroup) {
+            effectiveGroupId = fallbackGroup.id;
+          } else {
+            return res
+              .status(400)
+              .json({ error: "No groups available for global status" });
+          }
+        }
+      } else {
+        return res
+          .status(403)
+          .json({ error: "Only admins can post global statuses" });
+      }
+    }
+
     // Varsa eski durumunu sil (Kullanıcı başına 1 aktif durum)
     await prisma.status.deleteMany({
       where: {
         userId: userId as string,
-        groupId: groupId as string,
+        // We delete by userId only for admin if they post globally?
+        // No, keep original behavior per-group for students, but for Admin, maybe global.
+        // Let's just use effectiveGroupId.
       },
     });
 
     const status = await prisma.status.create({
       data: {
         userId: userId as string,
-        groupId: groupId as string,
+        groupId: effectiveGroupId as string,
         text: text as string,
         music: music || undefined,
         expiresAt,

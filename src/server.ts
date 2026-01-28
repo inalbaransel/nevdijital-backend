@@ -136,6 +136,22 @@ io.on("connection", async (socket) => {
   // Join a group chat room (Explicit join)
   socket.on("join_group", async (groupId: string) => {
     try {
+      const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
+
+      // Special case for Admin Global Stories
+      if (groupId === "global") {
+        const dbUser = await prisma.user.findUnique({
+          where: { uid: user?.uid },
+          select: { role: true },
+        });
+        if (dbUser?.role === "admin" || user?.uid === ADMIN_UID) {
+          socket.join("admin_global");
+          console.log(`🌍 Admin ${socket.id} joined admin_global room`);
+          socket.emit("joined_group", { groupId: "global" });
+          return;
+        }
+      }
+
       // Validate group exists
       const group = await prisma.group.findUnique({
         where: { id: groupId },
@@ -208,14 +224,16 @@ io.on("connection", async (socket) => {
     const { groupId, status } = data;
     const ADMIN_UID = "epbI95IFGjdTe7Wu4pP8bOQD6bz2";
 
-    // Check if status owner is Admin (using status.user.uid or linking back to db user)
-    // status.user is usually populated in the response from POST /statuses
     const isGlobal = status?.user?.uid === ADMIN_UID;
 
     if (isGlobal) {
       io.emit("status_updated", status); // Broadcast to everyone
-    } else if (groupId && status) {
-      io.to(groupId).emit("status_updated", status);
+    } else {
+      if (groupId) {
+        io.to(groupId).emit("status_updated", status);
+      }
+      // ALSO send to admin_global so they can see everything in real-time
+      io.to("admin_global").emit("status_updated", status);
     }
   });
 
